@@ -1,0 +1,33 @@
+# Ignore model files
+*.h5
+*.hdf5
+*.keras
+*.pth
+*.pt
+*.pkl
+*.joblib
+
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore virtual environments
+venv/
+env/
+
+# Ignore data folders
+data/
+datasets/
+checkpoints/
+models/
+
+# Ignore image uploads or test images
+uploads/
+test.jpg
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
