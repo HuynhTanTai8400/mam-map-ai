@@ -30,7 +30,7 @@ download_model()
 
 
 # Load model trên locallocal
-model = load_model("D:/bufer/FAP2021_2025/Summer_2025/EXE201/Mam_Map_Function/vietnamese_food_recogition/models/base_model_trained.keras")
+model = load_model("./models/base_model_trained.keras")
 
 # Load class names
 classes = [
