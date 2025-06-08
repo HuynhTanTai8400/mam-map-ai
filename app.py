@@ -10,8 +10,6 @@ import json
 import base64
 from flask import render_template
 
-
-import os
 import requests
 
 MODEL_PATH = "models/base_model_trained.keras"
@@ -30,7 +28,7 @@ download_model()
 
 
 # Load model trên locallocal
-model = load_model("./models/base_model_trained.keras")
+model = load_model(MODEL_PATH)
 
 # Load class names
 classes = [
@@ -112,8 +110,5 @@ def predict():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
 
-
-if __name__ == "__main__":
-    app.run(debug=True)
