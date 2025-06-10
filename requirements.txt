@@ -1,5 +1,6 @@
 flask
 tensorflow
-numpy
 pillow
+numpy
+requests
 gunicorn
