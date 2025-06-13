@@ -12,11 +12,14 @@ from flask import render_template
 
 import requests
 
-#model tren local
-MODEL_PATH = "models/base_model_trained.keras"
 
-#model trên drive
-MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhEfN1fjVwqHXbTC"
+
+
+# #model tren local
+# MODEL_PATH = "models/base_model_trained.keras"
+
+# #model trên drive
+# MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhEfN1fjVwqHXbTC"
 # def download_model():
 #     if not os.path.exists(MODEL_PATH):
 #         print("Downloading model...")
@@ -27,6 +30,43 @@ MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhE
 #         print("Model downloaded.")
 
 # download_model()
+
+
+# model tren local
+MODEL_PATH = "models/base_model_trained.keras"
+
+# model trên drive
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhEfN1fjVwqHXbTC"
+
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Downloading model...")
+        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+        try:
+            response = requests.get(MODEL_URL, stream=True)
+            response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
+            with open(MODEL_PATH, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            print(f"Model downloaded successfully to {MODEL_PATH}.")
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading model: {e}")
+            # Optionally, re-raise the exception or exit if model download is critical
+            raise RuntimeError(f"Failed to download model from {MODEL_URL}") from e
+    else:
+        print(f"Model already exists at {MODEL_PATH}.")
+
+
+# Gọi hàm download_model() trước khi load_model
+try:
+    download_model()
+    # Sau khi tải xong, load model từ đường dẫn cục bộ
+    model = load_model(MODEL_PATH)
+    print("Model loaded successfully.")
+except Exception as e:
+    print(f"Failed to load model: {e}")
+    # Thoát ứng dụng nếu model không thể tải/load
+    exit(1) # Rất quan trọng để ứng dụng không chạy mà không có model
 
 
 # Load model trên serverserver
@@ -112,4 +152,5 @@ def predict():
     })
 
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 5000)) # Lấy cổng từ biến môi trường PORT, mặc định là 5000
+    app.run(host="0.0.0.0", port=port, debug=False) # Rất quan trọng: host="0.0.0.0" và debug=False cho production
