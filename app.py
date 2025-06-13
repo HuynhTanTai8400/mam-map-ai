@@ -27,8 +27,8 @@ def download_model():
 download_model()
 
 
-# Load model trên locallocal
-model = load_model(MODEL_PATH)
+# Load model trên serverserver
+model = load_model(MODEL_URL)
 
 # Load class names
 classes = [
