@@ -12,19 +12,21 @@ from flask import render_template
 
 import requests
 
+#model tren local
 MODEL_PATH = "models/base_model_trained.keras"
-# MODEL_URL = "https://drive.google.com/file/d/1k1B8xe-aYLxu6vVGzhEfN1fjVwqHXbTC/view?usp=drive_link"
-MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhEfN1fjVwqHXbTC"
-def download_model():
-    if not os.path.exists(MODEL_PATH):
-        print("Downloading model...")
-        response = requests.get(MODEL_URL)
-        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        with open(MODEL_PATH, "wb") as f:
-            f.write(response.content)
-        print("Model downloaded.")
 
-download_model()
+#model trên drive
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhEfN1fjVwqHXbTC"
+# def download_model():
+#     if not os.path.exists(MODEL_PATH):
+#         print("Downloading model...")
+#         response = requests.get(MODEL_URL)
+#         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+#         with open(MODEL_PATH, "wb") as f:
+#             f.write(response.content)
+#         print("Model downloaded.")
+
+# download_model()
 
 
 # Load model trên serverserver
