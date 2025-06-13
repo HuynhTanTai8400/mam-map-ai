@@ -57,20 +57,20 @@ def download_model():
         print(f"Model already exists at {MODEL_PATH}.")
 
 
-# Gọi hàm download_model() trước khi load_model
-try:
-    download_model()
-    # Sau khi tải xong, load model từ đường dẫn cục bộ
-    model = load_model(MODEL_PATH)
-    print("Model loaded successfully.")
-except Exception as e:
-    print(f"Failed to load model: {e}")
-    # Thoát ứng dụng nếu model không thể tải/load
-    exit(1) # Rất quan trọng để ứng dụng không chạy mà không có model
+# # Gọi hàm download_model() trước khi load_model
+# try:
+#     download_model()
+#     # Sau khi tải xong, load model từ đường dẫn cục bộ
+#     model = load_model(MODEL_PATH)
+#     print("Model loaded successfully.")
+# except Exception as e:
+#     print(f"Failed to load model: {e}")
+#     # Thoát ứng dụng nếu model không thể tải/load
+#     exit(1) # Rất quan trọng để ứng dụng không chạy mà không có model
 
 
-# Load model trên serverserver
-model = load_model(MODEL_URL)
+# Load model trên server
+model = load_model(MODEL_PATH)
 
 # Load class names
 classes = [
