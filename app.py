@@ -9,6 +9,25 @@ import json
 import base64
 import requests
 
+from flask import Flask, request, jsonify, redirect, render_template
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+import numpy as np
+import os
+from PIL import Image
+import io
+import json
+import base64
+import requests
+import logging
+
+# Configure logging for better debugging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Initialize Flask app
+app = Flask(__name__)
+
 # Đường dẫn lưu model trên local
 MODEL_PATH = "models/base_model_trained.keras"
 
@@ -17,40 +36,43 @@ MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhE
 
 def download_model():
     """
-    Hàm này kiểm tra và tải model từ Google Drive nếu nó chưa tồn tại.
+    Kiểm tra và tải model từ Google Drive nếu nó chưa tồn tại.
     """
     if not os.path.exists(MODEL_PATH):
-        print("Bắt đầu tải model...")
+        logger.info("Bắt đầu tải model...")
         # Tạo thư mục 'models' nếu chưa có
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
         try:
-            # Tải model bằng cách sử dụng stream để xử lý file lớn
+            # Tải model bằng stream để xử lý file lớn
             response = requests.get(MODEL_URL, stream=True)
-            response.raise_for_status() # Báo lỗi nếu HTTP response là 4xx hoặc 5xx
+            response.raise_for_status()
 
             with open(MODEL_PATH, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            print(f"Model đã được tải thành công về {MODEL_PATH}.")
+            logger.info(f"Model đã được tải thành công về {MODEL_PATH}.")
+            # Verify file integrity
+            if not os.path.getsize(MODEL_PATH) > 0:
+                raise RuntimeError("Tệp model tải về rỗng hoặc bị lỗi.")
         except requests.exceptions.RequestException as e:
-            print(f"Lỗi khi tải model: {e}")
-            # Rất quan trọng: Báo lỗi và dừng ứng dụng nếu không tải được model
-            raise RuntimeError(f"Không thể tải model từ {MODEL_URL}. Vui lòng kiểm tra URL hoặc kết nối mạng.") from e
+            logger.error(f"Lỗi khi tải model: {e}")
+            raise RuntimeError(f"Không thể tải model từ {MODEL_URL}.") from e
     else:
-        print(f"Model đã tồn tại tại {MODEL_PATH}.")
+        logger.info(f"Model đã tồn tại tại {MODEL_PATH}.")
 
-
-# Gọi hàm tải model
-download_model()
-
-# Tải model vào bộ nhớ sau khi đảm bảo nó đã được tải xuống
+# Tải model
 try:
+    logger.info("Kiểm tra và tải model...")
+    download_model()
+    logger.info(f"Kiểm tra quyền truy cập tệp: {MODEL_PATH}")
+    if not os.access(MODEL_PATH, os.R_OK):
+        raise RuntimeError(f"Không có quyền đọc tệp model tại {MODEL_PATH}.")
+    logger.info("Đang load model...")
     model = load_model(MODEL_PATH)
-    print("Model đã được load thành công.")
+    logger.info("Model đã được load thành công.")
 except Exception as e:
-    print(f"Lỗi khi load model từ {MODEL_PATH}: {e}")
-    # Báo lỗi và dừng ứng dụng nếu không load được model
-    raise RuntimeError(f"Không thể load model từ {MODEL_PATH}. Vui lòng kiểm tra file model.") from e
+    logger.error(f"Lỗi khi load model từ {MODEL_PATH}: {e}")
+    raise RuntimeError(f"Không thể load model từ {MODEL_PATH}.") from e
 
 # Load tên các lớp (class names)
 classes = [
@@ -65,8 +87,7 @@ classes = [
 # Khởi tạo Flask app
 app = Flask(__name__)
 
-# Load mock metadata từ JSON/local file (hoặc sau này từ DB)
-# Đảm bảo file 'restaurant_data.json' nằm cùng cấp với app.py hoặc trong thư mục gốc của project
+# Load mock metadata từ JSON/local file ( sau này từ DB)
 try:
     with open("restaurant_data.json", "r", encoding="utf-8") as f:
         restaurants_by_label = json.load(f)
@@ -80,9 +101,9 @@ except json.JSONDecodeError:
 
 
 def preprocess_image(file):
-    """
-    Tiền xử lý hình ảnh đầu vào để phù hợp với model.
-    """
+
+    #Tiền xử lý hình ảnh đầu vào để phù hợp với model.
+
     img = Image.open(io.BytesIO(file)).convert("RGB")
     img = img.resize((300, 300)) # Thay đổi kích thước về 300x300
     img_array = image.img_to_array(img) / 255.0 # Chuyển đổi thành array và chuẩn hóa
@@ -91,9 +112,6 @@ def preprocess_image(file):
 
 @app.route("/", methods=["GET"])
 def index():
-    """
-    Hiển thị trang chủ với form tải ảnh lên.
-    """
     return render_template("index.html", result=None)
 
 @app.route("/predict", methods=["POST"])
@@ -130,9 +148,6 @@ def predict():
     })
 
 if __name__ == "__main__":
-    # Lấy cổng từ biến môi trường PORT (được Render.com cung cấp), mặc định là 5000
     port = int(os.environ.get("PORT", 5000))
-    # Chạy ứng dụng Flask. Rất quan trọng: host="0.0.0.0" để cho phép kết nối từ bên ngoài
-    # và debug=False cho môi trường production.
     app.run(host="0.0.0.0", port=port, debug=False)
 
