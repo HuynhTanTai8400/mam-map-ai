@@ -9,70 +9,76 @@ import json
 import base64
 import requests
 
-from flask import Flask, request, jsonify, redirect, render_template
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
-import numpy as np
-import os
-from PIL import Image
-import io
-import json
-import base64
-import requests
-import logging
-
-# Configure logging for better debugging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# Initialize Flask app
-app = Flask(__name__)
-
 # Đường dẫn lưu model trên local
 MODEL_PATH = "models/base_model_trained.keras"
 
 # URL của model trên Google Drive
 MODEL_URL = "https://drive.google.com/uc?export=download&id=1k1B8xe-aYLxu6vVGzhEfN1fjVwqHXbTC"
 
+import re
+import time
+
 def download_model():
     """
-    Kiểm tra và tải model từ Google Drive nếu nó chưa tồn tại.
+    Hàm này kiểm tra và tải model từ Google Drive nếu nó chưa tồn tại,
+    xử lý cảnh báo về virus cho các file lớn.
     """
     if not os.path.exists(MODEL_PATH):
-        logger.info("Bắt đầu tải model...")
-        # Tạo thư mục 'models' nếu chưa có
+        print("Bắt đầu tải model...")
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
         try:
-            # Tải model bằng stream để xử lý file lớn
-            response = requests.get(MODEL_URL, stream=True)
+            # Bước 1: Gửi request ban đầu để nhận được trang cảnh báo
+            session = requests.Session()
+            response = session.get(MODEL_URL, stream=True)
             response.raise_for_status()
 
+            # Kiểm tra nếu có cảnh báo virus (file quá lớn)
+            if 'confirm' in response.url or 'id=' in response.url and 'export=download' in response.url and 'confirm' not in response.url:
+                # Đây là trang cảnh báo, cần trích xuất URL confirm
+                # Sử dụng regex để tìm giá trị 'id' và 'confirm' nếu có
+                match = re.search(r'id=([\w-]+)&confirm=([\w-]+)', response.text)
+                if not match: # Nếu không tìm thấy confirm trong URL phản hồi, thử tìm trong body HTML
+                    match = re.search(r'confirm=([^&"\']+)', response.text)
+                
+                if match:
+                    file_id = re.search(r'id=([\w-]+)', MODEL_URL).group(1)
+                    confirm_code = match.group(1) if match.group(0).startswith('confirm=') else match.group(2) # Lấy đúng confirm code
+                    
+                    # Tạo URL tải xuống trực tiếp sau khi xác nhận cảnh báo
+                    download_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm_code}"
+                    print(f"Phát hiện cảnh báo virus, đang cố gắng tải xuống từ: {download_url}")
+                    response = session.get(download_url, stream=True)
+                    response.raise_for_status()
+                else:
+                    print("Không thể tìm thấy mã xác nhận cảnh báo từ Google Drive.")
+                    raise RuntimeError("Không thể xử lý cảnh báo Google Drive.")
+
+            # Tải model bằng cách sử dụng stream
             with open(MODEL_PATH, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            logger.info(f"Model đã được tải thành công về {MODEL_PATH}.")
-            # Verify file integrity
-            if not os.path.getsize(MODEL_PATH) > 0:
-                raise RuntimeError("Tệp model tải về rỗng hoặc bị lỗi.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Lỗi khi tải model: {e}")
-            raise RuntimeError(f"Không thể tải model từ {MODEL_URL}.") from e
-    else:
-        logger.info(f"Model đã tồn tại tại {MODEL_PATH}.")
+            print(f"Model đã được tải thành công về {MODEL_PATH}.")
 
-# Tải model
+        except requests.exceptions.RequestException as e:
+            print(f"Lỗi khi tải model: {e}")
+            raise RuntimeError(f"Không thể tải model từ {MODEL_URL}. Vui lòng kiểm tra URL hoặc kết nối mạng.") from e
+    else:
+        print(f"Model đã tồn tại tại {MODEL_PATH}.")
+
+# Các phần còn lại của code Flask của bạn không cần thay đổi.
+
+
+# Gọi hàm tải model
+download_model()
+
+# Tải model vào bộ nhớ sau khi đảm bảo nó đã được tải xuống
 try:
-    logger.info("Kiểm tra và tải model...")
-    download_model()
-    logger.info(f"Kiểm tra quyền truy cập tệp: {MODEL_PATH}")
-    if not os.access(MODEL_PATH, os.R_OK):
-        raise RuntimeError(f"Không có quyền đọc tệp model tại {MODEL_PATH}.")
-    logger.info("Đang load model...")
     model = load_model(MODEL_PATH)
-    logger.info("Model đã được load thành công.")
+    print("Model đã được load thành công.")
 except Exception as e:
-    logger.error(f"Lỗi khi load model từ {MODEL_PATH}: {e}")
-    raise RuntimeError(f"Không thể load model từ {MODEL_PATH}.") from e
+    print(f"Lỗi khi load model từ {MODEL_PATH}: {e}")
+    # Báo lỗi và dừng ứng dụng nếu không load được model
+    raise RuntimeError(f"Không thể load model từ {MODEL_PATH}. Vui lòng kiểm tra file model.") from e
 
 # Load tên các lớp (class names)
 classes = [
